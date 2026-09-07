@@ -47,10 +47,9 @@ export default function Login({ onLoggedIn }) {
           />
         </label>
         <label style={{ display: 'block', marginBottom: 16 }}>
-          PIN
+          PIN / Kata Sandi
           <input
             type="password"
-            inputMode="numeric"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}

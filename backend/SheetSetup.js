@@ -136,3 +136,27 @@ function createTestUser() {
   sheet.appendRow([userId, username, pinHash, name, role, '']);
   Logger.log('Created user "%s" with PIN "%s" (change after first login).', username, pin);
 }
+
+/**
+ * Updates an existing user's PIN in place (does not create a duplicate row).
+ * Edit the values below, then run manually from the Apps Script editor.
+ */
+function updateUserPin() {
+  const username = 'admin';
+  const newPin = 'YHSIndonesia123!';
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const usernameIdx = headers.indexOf('username');
+  const pinHashIdx = headers.indexOf('pinHash');
+
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][usernameIdx] === username) {
+      sheet.getRange(r + 1, pinHashIdx + 1).setValue(hashPin_(newPin));
+      Logger.log('Updated PIN for "%s".', username);
+      return;
+    }
+  }
+  throw new Error('No user found with username "' + username + '"');
+}
