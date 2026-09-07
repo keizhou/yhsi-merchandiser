@@ -122,11 +122,14 @@ function reseedProducts() {
 
 /**
  * Convenience helper for creating your first login during setup.
- * Run manually from the Apps Script editor: edit the values below, then Run.
+ * This file is committed to a public git repo, so this default PIN is
+ * fine (it's a throwaway starter value, not a real credential), but
+ * change it immediately via updateUserPin() and never replace it here
+ * with a real one, see the warning on that function.
  */
 function createTestUser() {
   const username = 'admin';
-  const pin = '123456'; // change this, then change your real PIN after first login
+  const pin = '123456';
   const name = 'Admin';
   const role = 'supervisor';
 
@@ -139,11 +142,21 @@ function createTestUser() {
 
 /**
  * Updates an existing user's PIN in place (does not create a duplicate row).
- * Edit the values below, then run manually from the Apps Script editor.
+ *
+ * IMPORTANT: this file is committed to a public git repo. Never put a real
+ * PIN here and push it. Instead, open this function directly in the Apps
+ * Script browser editor (script.google.com), temporarily change the two
+ * values below there, click Run, then change them back to placeholders
+ * before the next `clasp push` — an edit made only in the browser editor
+ * never touches your local files or git.
  */
 function updateUserPin() {
-  const username = 'admin';
-  const newPin = 'YHSIndonesia123!';
+  const username = 'CHANGE_ME';
+  const newPin = 'CHANGE_ME';
+
+  if (username === 'CHANGE_ME' || newPin === 'CHANGE_ME') {
+    throw new Error('Edit username/newPin above (in the browser editor, not a local file) before running.');
+  }
 
   const sheet = getSheet_(SHEET_NAMES.USERS);
   const data = sheet.getDataRange().getValues();
