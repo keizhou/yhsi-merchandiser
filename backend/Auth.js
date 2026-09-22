@@ -52,6 +52,8 @@ function findUserByUsername_(username) {
         name: data[r][idx.name],
         role: data[r][idx.role],
         storeIds: data[r][idx.storeIds],
+        areaId: data[r][idx.areaId],
+        regionId: data[r][idx.regionId],
       };
     }
   }
@@ -75,6 +77,8 @@ function handleLogin_(body) {
     userId: user.userId,
     username: user.username,
     role: user.role,
+    areaId: user.areaId || '',
+    regionId: user.regionId || '',
     exp: Date.now() + TOKEN_TTL_MS,
   });
   return {
@@ -85,6 +89,8 @@ function handleLogin_(body) {
       username: user.username,
       name: user.name,
       role: user.role,
+      areaId: user.areaId || '',
+      regionId: user.regionId || '',
       storeIds: user.storeIds ? String(user.storeIds).split(',').filter(Boolean) : [],
     },
   };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { countPending, onQueueChange, startQueueSync } from '../lib/queue';
 
 export default function SyncIndicator() {
@@ -33,8 +33,8 @@ export default function SyncIndicator() {
         padding: '6px 10px',
         borderRadius: 6,
         marginBottom: 12,
-        background: online ? '#fff6e0' : '#fdeaea',
-        color: online ? '#8a6100' : '#8a1f1f',
+        background: online ? 'var(--warning-bg)' : 'var(--danger-bg)',
+        color: online ? 'var(--warning)' : 'var(--danger)',
       }}
     >
       {!online && 'Tidak ada koneksi internet. '}

@@ -24,6 +24,34 @@ function getProducts_() {
 }
 
 /**
+ * action: "getStorePackTypes" — { token, storeId } -> distinct pack types
+ * this store carries, so VisitForm knows how many shelf photo slots to
+ * show. Uses the store's StoreProducts profile if one has been set up
+ * (see setStoreProducts_ in AdminService.js), otherwise falls back to the
+ * full global catalog's pack types so the form still works for stores
+ * nobody has profiled yet.
+ */
+function getStorePackTypes_(params) {
+  const spSheet = getSheet_(SHEET_NAMES.STORE_PRODUCTS);
+  const storeProducts = sheetToObjects_(spSheet).filter((sp) => sp.storeId === params.storeId && sp.listed);
+
+  const productsSheet = getSheet_(SHEET_NAMES.PRODUCTS);
+  const products = sheetToObjects_(productsSheet);
+  const productBySku = {};
+  products.forEach((p) => (productBySku[p.sku] = p));
+
+  let packtypes;
+  if (storeProducts.length > 0) {
+    packtypes = storeProducts.map((sp) => productBySku[sp.sku] && productBySku[sp.sku].packtype).filter(Boolean);
+  } else {
+    packtypes = products.map((p) => p.packtype);
+  }
+
+  const distinct = Array.from(new Set(packtypes));
+  return { ok: true, storeId: params.storeId, packtypes: distinct };
+}
+
+/**
  * action: "getJourneyPlan" — { token, week? } -> plans for the logged-in merchandiser
  */
 function getJourneyPlan_(auth, body) {
@@ -63,10 +91,11 @@ function findVisitRow_(sheet, visitId) {
  *
  * body: {
  *   token, visitId, storeId, journeyPlanId, checkInTime, status,
- *   availability: { sku: true|false, ... },
+ *   availability: { sku: {available, cartonQty, pcsQty}, ... },
  *   stockTake: { sku: count, ... },
- *   primaryPhoto: { base64, mimeType } | null,
- *   secondaryPhoto: { base64, mimeType } | null,
+ *   shelfPhotos: [{ packtype, photo: {base64, mimeType} }, ...],
+ *   secondaryDisplayCount: number,
+ *   secondaryDisplayPhotos: [{base64, mimeType}, ...],
  * }
  */
 function submitVisit_(auth, body) {
@@ -77,17 +106,45 @@ function submitVisit_(auth, body) {
   const sheet = getSheet_(SHEET_NAMES.VISITS);
   const existing = findVisitRow_(sheet, body.visitId);
 
-  let primaryPhotoUrl = existing ? sheet.getRange(existing.rowNumber, existing.headers.indexOf('primaryPhotoUrl') + 1).getValue() : '';
-  let secondaryPhotoUrl = existing ? sheet.getRange(existing.rowNumber, existing.headers.indexOf('secondaryPhotoUrl') + 1).getValue() : '';
+  function existingValue(field) {
+    return existing ? sheet.getRange(existing.rowNumber, existing.headers.indexOf(field) + 1).getValue() : '';
+  }
 
   const checkInTime = body.checkInTime || new Date().toISOString();
   const visitDateStr = checkInTime.slice(0, 10); // "2026-09-07" from an ISO string
 
-  if (body.primaryPhoto && body.primaryPhoto.base64) {
-    primaryPhotoUrl = savePhoto_(body.storeId, visitDateStr, body.visitId, 'primary', body.primaryPhoto.base64, body.primaryPhoto.mimeType);
+  // Shelf photos: one per pack type. Re-saves only the ones sent with new
+  // base64 data (offline retries of an already-synced visit won't resend
+  // photo bytes), keeping any previously-saved URLs for the rest.
+  let shelfPhotos = [];
+  try {
+    shelfPhotos = JSON.parse(existingValue('shelfPhotosJson') || '[]');
+  } catch (e) {
+    shelfPhotos = [];
   }
-  if (body.secondaryPhoto && body.secondaryPhoto.base64) {
-    secondaryPhotoUrl = savePhoto_(body.storeId, visitDateStr, body.visitId, 'secondary', body.secondaryPhoto.base64, body.secondaryPhoto.mimeType);
+  if (Array.isArray(body.shelfPhotos)) {
+    body.shelfPhotos.forEach((entry) => {
+      if (!entry.photo || !entry.photo.base64) return;
+      const url = savePhoto_(body.storeId, visitDateStr, body.visitId, entry.packtype, entry.photo.base64, entry.photo.mimeType);
+      const idx = shelfPhotos.findIndex((p) => p.packtype === entry.packtype);
+      const newEntry = { packtype: entry.packtype, photoUrl: url };
+      if (idx === -1) shelfPhotos.push(newEntry);
+      else shelfPhotos[idx] = newEntry;
+    });
+  }
+
+  let secondaryDisplayPhotos = [];
+  try {
+    secondaryDisplayPhotos = JSON.parse(existingValue('secondaryDisplayPhotosJson') || '[]');
+  } catch (e) {
+    secondaryDisplayPhotos = [];
+  }
+  if (Array.isArray(body.secondaryDisplayPhotos) && body.secondaryDisplayPhotos.length > 0) {
+    secondaryDisplayPhotos = body.secondaryDisplayPhotos.map((photo, i) =>
+      photo && photo.base64
+        ? savePhoto_(body.storeId, visitDateStr, body.visitId, 'secondary-' + (i + 1), photo.base64, photo.mimeType)
+        : secondaryDisplayPhotos[i] || ''
+    );
   }
 
   const rowValues = {
@@ -99,18 +156,19 @@ function submitVisit_(auth, body) {
     status: body.status || 'submitted',
     availabilityJson: JSON.stringify(body.availability || {}),
     stockTakeJson: JSON.stringify(body.stockTake || {}),
-    primaryPhotoUrl: primaryPhotoUrl,
-    secondaryPhotoUrl: secondaryPhotoUrl,
+    primaryPhotoUrl: existingValue('primaryPhotoUrl'), // deprecated, untouched
+    secondaryPhotoUrl: existingValue('secondaryPhotoUrl'), // deprecated, untouched
     syncedAt: new Date().toISOString(),
+    shelfPhotosJson: JSON.stringify(shelfPhotos),
+    secondaryDisplayCount: body.secondaryDisplayCount || 0,
+    secondaryDisplayPhotosJson: JSON.stringify(secondaryDisplayPhotos),
   };
 
-  const orderedValues = SHEET_HEADERS.Visits.map((h) => rowValues[h]);
-
   if (existing) {
-    sheet.getRange(existing.rowNumber, 1, 1, orderedValues.length).setValues([orderedValues]);
+    writeRowByHeaders_(sheet, existing.rowNumber, rowValues);
   } else {
-    sheet.appendRow(orderedValues);
+    appendRowByHeaders_(sheet, rowValues);
   }
 
-  return { ok: true, visitId: body.visitId, primaryPhotoUrl: primaryPhotoUrl, secondaryPhotoUrl: secondaryPhotoUrl };
+  return { ok: true, visitId: body.visitId, shelfPhotos: shelfPhotos, secondaryDisplayPhotos: secondaryDisplayPhotos };
 }

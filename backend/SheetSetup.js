@@ -173,3 +173,264 @@ function updateUserPin() {
   }
   throw new Error('No user found with username "' + username + '"');
 }
+
+/**
+ * Appends a header column to an existing sheet if it isn't already there,
+ * without touching existing rows/data. Safe to run more than once.
+ */
+function addColumnIfMissing_(sheet, columnName) {
+  const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1);
+  const headers = headerRange.getValues()[0];
+  if (headers.indexOf(columnName) !== -1) return; // already there
+  sheet.getRange(1, sheet.getLastColumn() + 1).setValue(columnName);
+}
+
+/**
+ * Phase 2 foundation migration: creates the Areas and StoreProducts sheets,
+ * and adds the areaId column to Stores/Users, all without touching any
+ * existing data. Run once in the browser editor.
+ */
+function migratePhase2Schema() {
+  const ss = getSpreadsheet();
+
+  ensureSheet_(ss, SHEET_NAMES.AREAS, SHEET_HEADERS.Areas);
+  ensureSheet_(ss, SHEET_NAMES.STORE_PRODUCTS, SHEET_HEADERS.StoreProducts);
+
+  addColumnIfMissing_(getSheet_(SHEET_NAMES.STORES), 'areaId');
+  addColumnIfMissing_(getSheet_(SHEET_NAMES.USERS), 'areaId');
+
+  Logger.log('Phase 2 schema migrated: Areas + StoreProducts sheets created, areaId columns added to Stores/Users.');
+}
+
+/**
+ * Seeds two test areas and assigns the 3 test stores to them, so the
+ * area-scoping logic has something real to filter against. Run once,
+ * after migratePhase2Schema(), and after seedTestJourneyPlan() (from
+ * TestData.js) has already created the 3 test stores.
+ */
+function seedPhase2TestData() {
+  const areasSheet = getSheet_(SHEET_NAMES.AREAS);
+  const areas = [
+    ['AREA-JKT', 'Jakarta'],
+    ['AREA-SBY', 'Surabaya'],
+  ];
+  areasSheet.getRange(2, 1, areas.length, areas[0].length).setValues(areas);
+
+  const storesSheet = getSheet_(SHEET_NAMES.STORES);
+  const data = storesSheet.getDataRange().getValues();
+  const headers = data[0];
+  const storeIdIdx = headers.indexOf('storeId');
+  const areaIdIdx = headers.indexOf('areaId');
+  // All 3 test stores are actually Jakarta addresses (Jl. Gatot Subroto included),
+  // so all 3 belong in AREA-JKT. AREA-SBY (Surabaya) stays seeded above for
+  // testing multi-area scoping later, it just has no stores in it yet.
+  const storeAreaMap = { 'STORE-001': 'AREA-JKT', 'STORE-002': 'AREA-JKT', 'STORE-003': 'AREA-JKT' };
+  for (let r = 1; r < data.length; r++) {
+    const storeId = data[r][storeIdIdx];
+    if (storeAreaMap[storeId]) {
+      storesSheet.getRange(r + 1, areaIdIdx + 1).setValue(storeAreaMap[storeId]);
+    }
+  }
+
+  Logger.log('Seeded 2 test areas and assigned the 3 test stores to them.');
+}
+
+/**
+ * Updates an existing user's role and areaId in place. Edit the values
+ * below, then run manually from the Apps Script editor. Use this to
+ * promote "admin" to an unscoped role, or to scope a supervisor/manager
+ * to one area.
+ */
+function updateUserRoleAndArea() {
+  const username = 'admin';
+  const role = 'admin'; // merchandiser | supervisor | manager | headoffice | admin
+  const areaId = ''; // blank for headoffice/admin (unscoped)
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const usernameIdx = headers.indexOf('username');
+  const roleIdx = headers.indexOf('role');
+  const areaIdIdx = headers.indexOf('areaId');
+
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][usernameIdx] === username) {
+      sheet.getRange(r + 1, roleIdx + 1).setValue(role);
+      sheet.getRange(r + 1, areaIdIdx + 1).setValue(areaId);
+      Logger.log('Updated "%s" to role=%s, areaId=%s', username, role, areaId || '(none)');
+      return;
+    }
+  }
+  throw new Error('No user found with username "' + username + '"');
+}
+
+/**
+ * Repairs a header-row misalignment on Visits: shelfPhotosJson,
+ * secondaryDisplayCount, and secondaryDisplayPhotosJson were written by
+ * submitVisit_ into the 3 columns immediately after syncedAt (positions
+ * 12-14), but migratePhase2bSchema's addColumnIfMissing_ ended up placing
+ * their header labels 3 columns further right, leaving a blank gap. This
+ * moves the header labels back to where the data actually is, no row data
+ * is touched. Safe to run more than once. Run once, now.
+ */
+function repairVisitsHeaderAlignment() {
+  const sheet = getSheet_(SHEET_NAMES.VISITS);
+  const lastCol = Math.max(sheet.getLastColumn(), 20);
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  const headers = headerRange.getValues()[0];
+
+  const syncedAtIdx = headers.indexOf('syncedAt');
+  if (syncedAtIdx === -1) {
+    throw new Error('Could not find "syncedAt" column, aborting to avoid guessing.');
+  }
+
+  const correctOrder = ['shelfPhotosJson', 'secondaryDisplayCount', 'secondaryDisplayPhotosJson'];
+  const targetStart = syncedAtIdx + 1; // 0-indexed, right after syncedAt
+
+  // Clear any stray copies of these header labels wherever they currently are.
+  correctOrder.forEach((name) => {
+    const strayIdx = headers.indexOf(name);
+    if (strayIdx !== -1) {
+      sheet.getRange(1, strayIdx + 1).clearContent();
+    }
+  });
+
+  // Write them where the data actually lives.
+  const targetRange = sheet.getRange(1, targetStart + 1, 1, correctOrder.length);
+  targetRange.setValues([correctOrder]);
+
+  Logger.log('Repaired Visits header alignment: %s now at columns %s-%s.', correctOrder.join(', '), targetStart + 1, targetStart + correctOrder.length);
+}
+
+/**
+ * Phase 2b migration: adds the new photo-related columns to Visits, and
+ * creates the VisitVerifications sheet. Doesn't touch existing data. Run
+ * once in the browser editor.
+ */
+function migratePhase2bSchema() {
+  const ss = getSpreadsheet();
+
+  const visitsSheet = getSheet_(SHEET_NAMES.VISITS);
+  addColumnIfMissing_(visitsSheet, 'shelfPhotosJson');
+  addColumnIfMissing_(visitsSheet, 'secondaryDisplayCount');
+  addColumnIfMissing_(visitsSheet, 'secondaryDisplayPhotosJson');
+
+  ensureSheet_(ss, SHEET_NAMES.VISIT_VERIFICATIONS, SHEET_HEADERS.VisitVerifications);
+
+  Logger.log('Phase 2b schema migrated: Visits photo columns added, VisitVerifications sheet created.');
+}
+
+/**
+ * Creates a test supervisor account scoped to AREA-JKT, PIN "123456" (a
+ * throwaway starter value, same convention as createTestUser, change it
+ * via updateUserPin before relying on this account for anything real).
+ */
+function createScopedSupervisorTestUser() {
+  const username = 'supervisor_jkt';
+  const pin = '123456';
+  const name = 'Supervisor Jakarta';
+  const role = 'supervisor';
+  const areaId = 'AREA-JKT';
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const userId = Utilities.getUuid();
+  const pinHash = hashPin_(pin);
+  appendRowByHeaders_(sheet, { userId, username, pinHash, name, role, storeIds: '', areaId });
+  Logger.log('Created user "%s" (role=%s, areaId=%s) with PIN "%s".', username, role, areaId, pin);
+}
+
+/**
+ * Phase 2c migration: creates the Regions sheet, adds regionId to Areas
+ * and Users, and adds the 4 RSM decision columns to VisitVerifications.
+ * Doesn't touch existing data. Run once in the browser editor.
+ */
+function migratePhase2cSchema() {
+  const ss = getSpreadsheet();
+
+  ensureSheet_(ss, SHEET_NAMES.REGIONS, SHEET_HEADERS.Regions);
+
+  addColumnIfMissing_(getSheet_(SHEET_NAMES.AREAS), 'regionId');
+  addColumnIfMissing_(getSheet_(SHEET_NAMES.USERS), 'regionId');
+
+  const verificationsSheet = getSheet_(SHEET_NAMES.VISIT_VERIFICATIONS);
+  addColumnIfMissing_(verificationsSheet, 'rsmStatus');
+  addColumnIfMissing_(verificationsSheet, 'rsmBy');
+  addColumnIfMissing_(verificationsSheet, 'rsmAt');
+  addColumnIfMissing_(verificationsSheet, 'rsmNotes');
+
+  Logger.log('Phase 2c schema migrated: Regions sheet created, regionId added to Areas/Users, rsm columns added to VisitVerifications.');
+}
+
+/**
+ * Seeds one test region and assigns AREA-JKT to it. Run once, after
+ * migratePhase2cSchema().
+ */
+function seedPhase2cTestData() {
+  const regionsSheet = getSheet_(SHEET_NAMES.REGIONS);
+  appendRowByHeaders_(regionsSheet, { regionId: 'REGION-WEST', name: 'Wilayah Barat' });
+
+  const areasSheet = getSheet_(SHEET_NAMES.AREAS);
+  const data = areasSheet.getDataRange().getValues();
+  const headers = data[0];
+  const areaIdIdx = headers.indexOf('areaId');
+  const regionIdIdx = headers.indexOf('regionId');
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][areaIdIdx] === 'AREA-JKT') {
+      areasSheet.getRange(r + 1, regionIdIdx + 1).setValue('REGION-WEST');
+    }
+  }
+
+  Logger.log('Seeded region REGION-WEST and assigned AREA-JKT to it.');
+}
+
+/**
+ * Creates a test RSM (manager role) account scoped to REGION-WEST, PIN
+ * "123456" (throwaway starter value, same convention as the other seed
+ * helpers). Run after seedPhase2cTestData().
+ */
+function createRsmTestUser() {
+  const username = 'rsm_west';
+  const pin = '123456';
+  const name = 'RSM Wilayah Barat';
+  const role = 'manager';
+  const regionId = 'REGION-WEST';
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const userId = Utilities.getUuid();
+  const pinHash = hashPin_(pin);
+  appendRowByHeaders_(sheet, { userId, username, pinHash, name, role, storeIds: '', areaId: '', regionId });
+  Logger.log('Created user "%s" (role=%s, regionId=%s) with PIN "%s".', username, role, regionId, pin);
+}
+
+/**
+ * Phase 2d migration: adds the 4 Head Office decision columns to
+ * VisitVerifications. Doesn't touch existing data. Run once in the
+ * browser editor.
+ */
+function migratePhase2dSchema() {
+  const verificationsSheet = getSheet_(SHEET_NAMES.VISIT_VERIFICATIONS);
+  addColumnIfMissing_(verificationsSheet, 'headOfficeStatus');
+  addColumnIfMissing_(verificationsSheet, 'headOfficeBy');
+  addColumnIfMissing_(verificationsSheet, 'headOfficeAt');
+  addColumnIfMissing_(verificationsSheet, 'headOfficeNotes');
+
+  Logger.log('Phase 2d schema migrated: headOffice columns added to VisitVerifications.');
+}
+
+/**
+ * Creates a test Head Office account, unscoped (sees everything), PIN
+ * "123456" (throwaway starter value, same convention as the other seed
+ * helpers).
+ */
+function createHeadOfficeTestUser() {
+  const username = 'ho_test';
+  const pin = '123456';
+  const name = 'Head Office Test';
+  const role = 'headoffice';
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const userId = Utilities.getUuid();
+  const pinHash = hashPin_(pin);
+  appendRowByHeaders_(sheet, { userId, username, pinHash, name, role, storeIds: '', areaId: '', regionId: '' });
+  Logger.log('Created user "%s" (role=%s) with PIN "%s".', username, role, pin);
+}

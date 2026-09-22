@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { getJourneyPlan } from '../lib/api';
 
 export default function JourneyPlan({ onSelectStore }) {
@@ -33,15 +33,15 @@ export default function JourneyPlan({ onSelectStore }) {
           <li
             key={item.planId}
             style={{
-              border: '1px solid #ddd',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: 12,
               marginBottom: 8,
             }}
           >
             <div style={{ fontWeight: 'bold' }}>{item.store ? item.store.name : item.storeId}</div>
-            {item.store && <div style={{ fontSize: 13, color: '#555' }}>{item.store.address}</div>}
-            <div style={{ fontSize: 13, color: '#555' }}>Tanggal rencana: {item.plannedDate}</div>
+            {item.store && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{item.store.address}</div>}
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tanggal rencana: {item.plannedDate}</div>
             <button
               style={{ marginTop: 8, padding: '6px 12px' }}
               onClick={() => onSelectStore(item)}

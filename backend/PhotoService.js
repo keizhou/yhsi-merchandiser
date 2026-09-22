@@ -61,7 +61,14 @@ function savePhoto_(storeId, dateStr, visitId, label, base64Data, mimeType) {
   const blob = Utilities.newBlob(bytes, mimeType || 'image/jpeg', visitId + '_' + label + '.' + ext);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return file.getUrl();
+  // Neither file.getUrl() (a view *page*, not an image) nor Drive's
+  // "uc?export=view" hotlink URL are reliable inside an <img> tag, Google
+  // routes that through an authenticated-redirect flow that only
+  // completes on a real browser navigation, not a background image
+  // fetch, so it works when you paste it in the address bar but not when
+  // embedded. Serving it through our own Web App (doGet ?action=getPhoto)
+  // sidesteps that entirely.
+  return ScriptApp.getService().getUrl() + '?action=getPhoto&fileId=' + file.getId();
 }
 
 /**

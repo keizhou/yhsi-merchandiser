@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { login, ping } from '../lib/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login({ onLoggedIn }) {
   const [username, setUsername] = useState('');
@@ -34,6 +35,9 @@ export default function Login({ onLoggedIn }) {
 
   return (
     <div style={{ maxWidth: 360, margin: '48px auto', padding: 16, fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <ThemeToggle />
+      </div>
       <h1 style={{ fontSize: 20, marginBottom: 16 }}>Masuk</h1>
 
       <form onSubmit={handleSubmit}>
@@ -62,13 +66,13 @@ export default function Login({ onLoggedIn }) {
         </button>
       </form>
 
-      <hr style={{ margin: '24px 0' }} />
+      <hr style={{ margin: '24px 0', borderColor: 'var(--border)' }} />
 
       <button onClick={handleTestConnection} style={{ width: '100%', padding: 8 }}>
         Tes koneksi ke server
       </button>
       {pingResult && (
-        <pre style={{ background: '#f4f4f4', padding: 8, marginTop: 8, fontSize: 12, overflowX: 'auto' }}>
+        <pre style={{ background: 'var(--bg-card-subtle)', padding: 8, marginTop: 8, fontSize: 12, overflowX: 'auto' }}>
           {JSON.stringify(pingResult, null, 2)}
         </pre>
       )}

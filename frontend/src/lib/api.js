@@ -109,3 +109,101 @@ export async function submitVisit(visitPayload) {
   if (!result.ok) throw new Error(result.error || 'failed to submit visit');
   return result;
 }
+
+// Management-screen endpoints (Dashboard/Merchandisers/Stores). No offline
+// caching here, unlike the field-facing calls above, these screens assume
+// the supervisor/manager/etc. has signal.
+
+export async function getAreas() {
+  const result = await apiGet('getAreas');
+  if (!result.ok) throw new Error(result.error || 'failed to load areas');
+  return result.areas;
+}
+
+export async function getStores() {
+  const result = await apiGet('getStores');
+  if (!result.ok) throw new Error(result.error || 'failed to load stores');
+  return result.stores;
+}
+
+export async function getMerchandisers() {
+  const result = await apiGet('getMerchandisers');
+  if (!result.ok) throw new Error(result.error || 'failed to load merchandisers');
+  return result.merchandisers;
+}
+
+export async function getStoreProducts(storeId) {
+  const result = await apiGet('getStoreProducts', { storeId });
+  if (!result.ok) throw new Error(result.error || 'failed to load store products');
+  return result.products;
+}
+
+export async function setStoreProducts(storeId, items) {
+  const result = await apiPost('setStoreProducts', { storeId, items });
+  if (!result.ok) throw new Error(result.error || 'failed to save store products');
+  return result;
+}
+
+export async function getDashboardSummary({ startDate, endDate, storeId } = {}) {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (storeId) params.storeId = storeId;
+  const result = await apiGet('getDashboardSummary', params);
+  if (!result.ok) throw new Error(result.error || 'failed to load dashboard summary');
+  return result;
+}
+
+export async function getStorePackTypes(storeId) {
+  const result = await apiGet('getStorePackTypes', { storeId });
+  if (!result.ok) throw new Error(result.error || 'failed to load store pack types');
+  return result.packtypes;
+}
+
+export async function getVisitsForVerification({ startDate, endDate, storeId } = {}) {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (storeId) params.storeId = storeId;
+  const result = await apiGet('getVisitsForVerification', params);
+  if (!result.ok) throw new Error(result.error || 'failed to load visits for verification');
+  return result.visits;
+}
+
+export async function submitVerification(payload) {
+  const result = await apiPost('submitVerification', payload);
+  if (!result.ok) throw new Error(result.error || 'failed to save verification');
+  return result;
+}
+
+export async function getVisitsForRsmReview({ startDate, endDate, storeId } = {}) {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (storeId) params.storeId = storeId;
+  const result = await apiGet('getVisitsForRsmReview', params);
+  if (!result.ok) throw new Error(result.error || 'failed to load visits for RSM review');
+  return result.visits;
+}
+
+export async function submitRsmReview(payload) {
+  const result = await apiPost('submitRsmReview', payload);
+  if (!result.ok) throw new Error(result.error || 'failed to save RSM review');
+  return result;
+}
+
+export async function getVisitsForHeadOfficeReview({ startDate, endDate, storeId } = {}) {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (storeId) params.storeId = storeId;
+  const result = await apiGet('getVisitsForHeadOfficeReview', params);
+  if (!result.ok) throw new Error(result.error || 'failed to load visits for Head Office review');
+  return result.visits;
+}
+
+export async function submitHeadOfficeReview(payload) {
+  const result = await apiPost('submitHeadOfficeReview', payload);
+  if (!result.ok) throw new Error(result.error || 'failed to save Head Office review');
+  return result;
+}
