@@ -225,3 +225,15 @@ export async function assignMerchandiserStores(userId, storeIds) {
   if (!result.ok) throw new Error(result.error || 'failed to assign stores');
   return result;
 }
+
+export async function getJourneyPlanForWeek(merchandiserId, week) {
+  const result = await apiGet('getJourneyPlanForWeek', { merchandiserId, week });
+  if (!result.ok) throw new Error(result.error || 'failed to load journey plan');
+  return result.entries;
+}
+
+export async function setJourneyPlanForWeek(merchandiserId, week, entries) {
+  const result = await apiPost('setJourneyPlanForWeek', { merchandiserId, week, entries });
+  if (!result.ok) throw new Error(result.error || 'failed to save journey plan');
+  return result;
+}

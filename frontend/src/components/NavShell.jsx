@@ -34,6 +34,11 @@ export default function NavShell({ user, onLogout }) {
               Toko
             </NavLink>
           )}
+          {['supervisor', 'manager', 'admin'].includes(user.role) && (
+            <NavLink to="/journey-planner" style={linkStyle}>
+              Rencana Kunjungan
+            </NavLink>
+          )}
           <NavLink to="/verification" style={linkStyle}>
             Verifikasi
           </NavLink>

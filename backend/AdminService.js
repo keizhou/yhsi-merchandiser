@@ -222,6 +222,79 @@ function createPendingMerchandiser_(auth, body) {
   return { ok: true, userId: userId };
 }
 
+/**
+ * Throws unless userId is a merchandiser visible to the caller (same scope
+ * rule as getMerchandisers_). Returns the merchandiser's row from
+ * getInScopeMerchandisers_'s user list.
+ */
+function requireMerchandiserInScope_(auth, userId) {
+  const { inScope } = getInScopeMerchandisers_(auth);
+  const found = inScope.find((u) => u.userId === userId);
+  if (!found) throw new AuthError_('unauthorized');
+  return found;
+}
+
+function findJourneyPlanRows_(sheet, merchandiserId, week) {
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const merchandiserIdx = headers.indexOf('merchandiserId');
+  const weekIdx = headers.indexOf('week');
+  const rows = [];
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][merchandiserIdx] === merchandiserId && data[r][weekIdx] === week) rows.push(r + 1);
+  }
+  return rows;
+}
+
+/**
+ * action: "getJourneyPlanForWeek" — { token, merchandiserId, week }
+ * week is an ISO week string like "2026-W39" (matches <input type="week">
+ * and Utilities.formatDate's "YYYY-'W'ww" pattern used when seeding).
+ */
+function getJourneyPlanForWeek_(auth, params) {
+  requireStoreProfileRole_(auth);
+  requireMerchandiserInScope_(auth, params.merchandiserId);
+
+  const sheet = getSheet_(SHEET_NAMES.JOURNEY_PLANS);
+  const all = sheetToObjects_(sheet);
+  const entries = all
+    .filter((p) => p.merchandiserId === params.merchandiserId && p.week === params.week)
+    .map((p) => ({ storeId: p.storeId, plannedDate: p.plannedDate }));
+  return { ok: true, entries: entries };
+}
+
+/**
+ * action: "setJourneyPlanForWeek" — { token, merchandiserId, week, entries: [{storeId, plannedDate}, ...] }
+ * Replaces this merchandiser's journey plan for that week wholesale
+ * (same pattern as setStoreProducts_), so a store visited twice in the
+ * same week is just two entries with different plannedDate.
+ */
+function setJourneyPlanForWeek_(auth, body) {
+  requireStoreProfileRole_(auth);
+  requireMerchandiserInScope_(auth, body.merchandiserId);
+
+  const entries = Array.isArray(body.entries) ? body.entries : [];
+  entries.forEach((e) => requireStoreInScope_(auth, e.storeId));
+
+  const sheet = getSheet_(SHEET_NAMES.JOURNEY_PLANS);
+  const existingRows = findJourneyPlanRows_(sheet, body.merchandiserId, body.week);
+  existingRows
+    .sort((a, b) => b - a)
+    .forEach((rowNumber) => sheet.deleteRow(rowNumber));
+
+  entries.forEach((e) => {
+    appendRowByHeaders_(sheet, {
+      planId: Utilities.getUuid(),
+      merchandiserId: body.merchandiserId,
+      week: body.week,
+      storeId: e.storeId,
+      plannedDate: e.plannedDate,
+    });
+  });
+
+  return { ok: true, count: entries.length };
+}
+
 function findUserRowById_(sheet, userId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];

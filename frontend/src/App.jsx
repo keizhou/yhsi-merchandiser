@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Merchandisers from './pages/Merchandisers';
 import Stores from './pages/Stores';
 import StoreProfile from './pages/StoreProfile';
+import JourneyPlanner from './pages/JourneyPlanner';
 import Verification from './pages/Verification';
 import RsmReview from './pages/RsmReview';
 import HeadOfficeReview from './pages/HeadOfficeReview';
@@ -75,6 +76,7 @@ function App() {
           <Route path="/merchandisers" element={<Merchandisers />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/stores/:storeId" element={<StoreProfile />} />
+          <Route path="/journey-planner" element={<JourneyPlanner />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/rsm-review" element={<RsmReview />} />
           <Route path="/head-office-review" element={<HeadOfficeReview />} />
