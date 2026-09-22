@@ -13,7 +13,6 @@ function AddStoreForm({ areas, onCreated }) {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [channel, setChannel] = useState('');
-  const [packTypes, setPackTypes] = useState('');
   const [areaId, setAreaId] = useState(areas[0]?.areaId || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -24,11 +23,10 @@ function AddStoreForm({ areas, onCreated }) {
     setSaving(true);
     setError('');
     try {
-      await createStore({ name: name.trim(), address, channel, packTypes, areaId });
+      await createStore({ name: name.trim(), address, channel, areaId });
       setName('');
       setAddress('');
       setChannel('');
-      setPackTypes('');
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -63,10 +61,6 @@ function AddStoreForm({ areas, onCreated }) {
       <label style={{ display: 'block', marginBottom: 8 }}>
         Channel
         <input value={channel} onChange={(e) => setChannel(e.target.value)} style={{ display: 'block', width: '100%', padding: 6, marginTop: 4 }} />
-      </label>
-      <label style={{ display: 'block', marginBottom: 8 }}>
-        Pack Types (pisahkan dengan koma)
-        <input value={packTypes} onChange={(e) => setPackTypes(e.target.value)} style={{ display: 'block', width: '100%', padding: 6, marginTop: 4 }} />
       </label>
       {areas.length > 1 && (
         <label style={{ display: 'block', marginBottom: 8 }}>

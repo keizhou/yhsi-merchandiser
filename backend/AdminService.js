@@ -164,9 +164,12 @@ function requireAreaInScope_(auth, areaId) {
 }
 
 /**
- * action: "createStore" — { token, name, address, channel, packTypes, areaId }
+ * action: "createStore" — { token, name, address, channel, areaId }
  * Creates the store's master record only (no product profile, that's a
  * separate step on the existing "Kelola profil produk toko" screen).
+ * Stores.packTypes is a legacy column, left blank here, VisitForm's shelf
+ * photo slots and product groupings are derived dynamically from
+ * StoreProducts/Products instead (see getStorePackTypes_).
  */
 function createStore_(auth, body) {
   requireStoreProfileRole_(auth);
@@ -182,7 +185,6 @@ function createStore_(auth, body) {
     name: name,
     address: String(body.address || ''),
     channel: String(body.channel || ''),
-    packTypes: String(body.packTypes || ''),
     areaId: areaId,
   });
   return { ok: true, storeId: storeId };

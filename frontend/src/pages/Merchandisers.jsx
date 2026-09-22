@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { getMerchandisers, getAreas, getStores, createPendingMerchandiser, assignMerchandiserStores, getSession } from '../lib/api';
+import { getMerchandisers, getAreas, createPendingMerchandiser, getSession } from '../lib/api';
 
 function scopedAreas(areas, user) {
   if (user.role === 'admin') return areas;
@@ -78,54 +78,8 @@ function AddMerchandiserForm({ areas, onCreated }) {
   );
 }
 
-function AssignStoresForm({ merchandiser, allStores, onSaved }) {
-  const [selected, setSelected] = useState(merchandiser.storeIds);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  function toggle(storeId) {
-    setSelected((prev) => (prev.includes(storeId) ? prev.filter((id) => id !== storeId) : [...prev, storeId]));
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError('');
-    try {
-      await assignMerchandiserStores(merchandiser.userId, selected);
-      onSaved();
-    } catch (err) {
-      setError(err.message || 'Gagal menyimpan penugasan toko');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 4 }}>Tugaskan Toko</div>
-      {allStores.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tidak ada toko di area ini.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {allStores.map((s) => (
-            <label key={s.storeId} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={selected.includes(s.storeId)} onChange={() => toggle(s.storeId)} />
-              {s.name}
-            </label>
-          ))}
-        </div>
-      )}
-      {error && <p style={{ color: 'crimson', fontSize: 13 }}>{error}</p>}
-      <button onClick={handleSave} disabled={saving} style={{ marginTop: 8 }}>
-        {saving ? 'Menyimpan...' : 'Simpan Penugasan'}
-      </button>
-    </div>
-  );
-}
-
 export default function Merchandisers() {
   const [list, setList] = useState(null);
-  const [stores, setStores] = useState([]);
   const [areas, setAreas] = useState([]);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(null);
@@ -142,9 +96,6 @@ export default function Merchandisers() {
   useEffect(() => {
     load();
     if (canManage) {
-      getStores()
-        .then(setStores)
-        .catch(() => {});
       getAreas()
         .then((all) => setAreas(scopedAreas(all, user)))
         .catch(() => {});
@@ -214,13 +165,6 @@ export default function Merchandisers() {
                       </li>
                     ))}
                   </ul>
-                )}
-                {canManage && (
-                  <AssignStoresForm
-                    merchandiser={m}
-                    allStores={stores}
-                    onSaved={load}
-                  />
                 )}
               </div>
             )}
