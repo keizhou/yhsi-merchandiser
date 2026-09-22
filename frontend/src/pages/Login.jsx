@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { login, ping } from '../lib/api';
+import { login } from '../lib/api';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login({ onLoggedIn }) {
@@ -7,17 +7,6 @@ export default function Login({ onLoggedIn }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [pingResult, setPingResult] = useState(null);
-
-  async function handleTestConnection() {
-    setError('');
-    try {
-      const result = await ping();
-      setPingResult(result);
-    } catch (err) {
-      setError('Tidak bisa terhubung ke server: ' + err.message);
-    }
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -65,17 +54,6 @@ export default function Login({ onLoggedIn }) {
           {loading ? 'Memproses...' : 'Masuk'}
         </button>
       </form>
-
-      <hr style={{ margin: '24px 0', borderColor: 'var(--border)' }} />
-
-      <button onClick={handleTestConnection} style={{ width: '100%', padding: 8 }}>
-        Tes koneksi ke server
-      </button>
-      {pingResult && (
-        <pre style={{ background: 'var(--bg-card-subtle)', padding: 8, marginTop: 8, fontSize: 12, overflowX: 'auto' }}>
-          {JSON.stringify(pingResult, null, 2)}
-        </pre>
-      )}
     </div>
   );
 }

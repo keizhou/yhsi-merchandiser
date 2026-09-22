@@ -207,3 +207,21 @@ export async function submitHeadOfficeReview(payload) {
   if (!result.ok) throw new Error(result.error || 'failed to save Head Office review');
   return result;
 }
+
+export async function createStore(payload) {
+  const result = await apiPost('createStore', payload);
+  if (!result.ok) throw new Error(result.error || 'failed to create store');
+  return result;
+}
+
+export async function createPendingMerchandiser(payload) {
+  const result = await apiPost('createPendingMerchandiser', payload);
+  if (!result.ok) throw new Error(result.error || 'failed to create merchandiser');
+  return result;
+}
+
+export async function assignMerchandiserStores(userId, storeIds) {
+  const result = await apiPost('assignMerchandiserStores', { userId, storeIds });
+  if (!result.ok) throw new Error(result.error || 'failed to assign stores');
+  return result;
+}

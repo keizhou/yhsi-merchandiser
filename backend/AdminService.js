@@ -51,12 +51,16 @@ function getStores_(auth) {
   return { ok: true, stores: filterByScopedAreas_(stores, auth) };
 }
 
-// A merchandiser's area comes from their assigned store(s), not a field on
-// Users directly (merchandisers aren't area-scoped themselves, their
-// *visibility to managers* is derived from where they're assigned).
+// A merchandiser's area normally comes from their assigned store(s), not a
+// field on Users directly (merchandisers aren't area-scoped themselves,
+// their *visibility to managers* is derived from where they're assigned).
+// A pending (pre-registered, not yet assigned any store) merchandiser has
+// no stores yet, so falls back to the areaId set at creation time.
 function merchandiserAreaIds_(user, storeById) {
   const storeIds = user.storeIds ? String(user.storeIds).split(',').filter(Boolean) : [];
-  return storeIds.map((id) => storeById[id] && storeById[id].areaId).filter(Boolean);
+  const areas = storeIds.map((id) => storeById[id] && storeById[id].areaId).filter(Boolean);
+  if (areas.length === 0 && user.areaId) return [user.areaId];
+  return areas;
 }
 
 /**
@@ -110,6 +114,7 @@ function getMerchandisers_(auth) {
       storeIds: storeIds,
       storeNames: storeIds.map((id) => (storeById[id] ? storeById[id].name : id)),
       areaIds: merchandiserAreaIds_(u, storeById),
+      pending: u.accountStatus === 'pending',
       journeyPlan: myPlans,
       lastVisit: lastVisit ? { storeId: lastVisit.storeId, checkInTime: lastVisit.checkInTime, status: lastVisit.status } : null,
     };
@@ -139,6 +144,117 @@ function requireStoreInScope_(auth, storeId) {
     throw new AuthError_('unauthorized');
   }
   return store;
+}
+
+/**
+ * Throws unless areaId is one the caller is allowed to create stores/
+ * merchandisers in: for a supervisor, their single assigned area; for a
+ * manager (RSM), any area within their region; unscoped roles can pick
+ * any area that exists.
+ */
+function requireAreaInScope_(auth, areaId) {
+  const scoped = getScopedAreaIds_(auth);
+  if (scoped !== null && scoped.indexOf(areaId) === -1) {
+    throw new AuthError_('unauthorized');
+  }
+  const areas = sheetToObjects_(getSheet_(SHEET_NAMES.AREAS));
+  if (!areas.some((a) => a.areaId === areaId)) {
+    throw new Error('area not found: ' + areaId);
+  }
+}
+
+/**
+ * action: "createStore" — { token, name, address, channel, packTypes, areaId }
+ * Creates the store's master record only (no product profile, that's a
+ * separate step on the existing "Kelola profil produk toko" screen).
+ */
+function createStore_(auth, body) {
+  requireStoreProfileRole_(auth);
+  const name = String(body.name || '').trim();
+  const areaId = String(body.areaId || '').trim();
+  if (!name) throw new Error('name is required');
+  requireAreaInScope_(auth, areaId);
+
+  const sheet = getSheet_(SHEET_NAMES.STORES);
+  const storeId = 'STORE-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+  appendRowByHeaders_(sheet, {
+    storeId: storeId,
+    name: name,
+    address: String(body.address || ''),
+    channel: String(body.channel || ''),
+    packTypes: String(body.packTypes || ''),
+    areaId: areaId,
+  });
+  return { ok: true, storeId: storeId };
+}
+
+/**
+ * action: "createPendingMerchandiser" — { token, name, areaId }
+ * Pre-registers a merchandiser's name and area only, with no
+ * username/PIN, so a Supervisor/RSM can appoint them to stores right
+ * away. accountStatus stays 'pending' until an admin activates the
+ * record (sets username/PIN) via activatePendingMerchandiser() in the
+ * Apps Script editor, account/PIN creation deliberately stays an admin
+ * task, not something exposed on the web UI.
+ */
+function createPendingMerchandiser_(auth, body) {
+  requireStoreProfileRole_(auth);
+  const name = String(body.name || '').trim();
+  const areaId = String(body.areaId || '').trim();
+  if (!name) throw new Error('name is required');
+  requireAreaInScope_(auth, areaId);
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const userId = Utilities.getUuid();
+  appendRowByHeaders_(sheet, {
+    userId: userId,
+    username: '',
+    pinHash: '',
+    name: name,
+    role: 'merchandiser',
+    storeIds: '',
+    areaId: areaId,
+    regionId: '',
+    accountStatus: 'pending',
+  });
+  return { ok: true, userId: userId };
+}
+
+function findUserRowById_(sheet, userId) {
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idx = {};
+  headers.forEach((h, i) => (idx[h] = i));
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][idx.userId] === userId) {
+      return { rowNumber: r + 1, idx: idx, row: data[r] };
+    }
+  }
+  return null;
+}
+
+/**
+ * action: "assignMerchandiserStores" — { token, userId, storeIds: [...] }
+ * Replaces a merchandiser's store assignment wholesale. Works for both
+ * pending (pre-registered, no login yet) and already-active
+ * merchandisers. Every storeId given, and the merchandiser's own area,
+ * must fall within the caller's scope.
+ */
+function assignMerchandiserStores_(auth, body) {
+  requireStoreProfileRole_(auth);
+  const userId = String(body.userId || '').trim();
+  const storeIds = Array.isArray(body.storeIds) ? body.storeIds.filter(Boolean) : [];
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const found = findUserRowById_(sheet, userId);
+  if (!found || found.row[found.idx.role] !== 'merchandiser') {
+    throw new Error('merchandiser not found: ' + userId);
+  }
+  requireAreaInScope_(auth, found.row[found.idx.areaId]);
+  storeIds.forEach((storeId) => requireStoreInScope_(auth, storeId));
+
+  sheet.getRange(found.rowNumber, found.idx.storeIds + 1).setValue(storeIds.join(','));
+  return { ok: true, userId: userId, storeIds: storeIds };
 }
 
 /**

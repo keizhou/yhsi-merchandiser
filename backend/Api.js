@@ -14,6 +14,9 @@
  * GET  ?action=getMerchandisers&token=...
  * GET  ?action=getStoreProducts&token=...&storeId=...
  * POST { action: "setStoreProducts", token, storeId, items }
+ * POST { action: "createStore", token, name, address, channel, packTypes, areaId }
+ * POST { action: "createPendingMerchandiser", token, name, areaId } (no login until admin activates it)
+ * POST { action: "assignMerchandiserStores", token, userId, storeIds }
  * GET  ?action=getDashboardSummary&token=...&startDate=...&endDate=...&storeId=...
  * GET  ?action=getStorePackTypes&token=...&storeId=...
  * GET  ?action=getVisitsForVerification&token=...&startDate=...&endDate=...&storeId=...
@@ -156,6 +159,36 @@ function doPost(e) {
       lock.waitLock(20000);
       try {
         return jsonOutput_(submitHeadOfficeReview_(auth, body));
+      } finally {
+        lock.releaseLock();
+      }
+    }
+    if (action === 'createStore') {
+      const auth = requireAuth_(body.token);
+      const lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+      try {
+        return jsonOutput_(createStore_(auth, body));
+      } finally {
+        lock.releaseLock();
+      }
+    }
+    if (action === 'createPendingMerchandiser') {
+      const auth = requireAuth_(body.token);
+      const lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+      try {
+        return jsonOutput_(createPendingMerchandiser_(auth, body));
+      } finally {
+        lock.releaseLock();
+      }
+    }
+    if (action === 'assignMerchandiserStores') {
+      const auth = requireAuth_(body.token);
+      const lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+      try {
+        return jsonOutput_(assignMerchandiserStores_(auth, body));
       } finally {
         lock.releaseLock();
       }

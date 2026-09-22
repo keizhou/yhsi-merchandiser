@@ -15,7 +15,7 @@ const SHEET_NAMES = {
 };
 
 const SHEET_HEADERS = {
-  Users: ['userId', 'username', 'pinHash', 'name', 'role', 'storeIds', 'areaId', 'regionId'],
+  Users: ['userId', 'username', 'pinHash', 'name', 'role', 'storeIds', 'areaId', 'regionId', 'accountStatus'],
   Stores: ['storeId', 'name', 'address', 'channel', 'packTypes', 'areaId'],
   Products: ['sku', 'name', 'packtype', 'category', 'msl', 'expectedFacing'],
   JourneyPlans: ['planId', 'merchandiserId', 'week', 'storeId', 'plannedDate'],

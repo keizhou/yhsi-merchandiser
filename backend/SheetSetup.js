@@ -434,3 +434,49 @@ function createHeadOfficeTestUser() {
   appendRowByHeaders_(sheet, { userId, username, pinHash, name, role, storeIds: '', areaId: '', regionId: '' });
   Logger.log('Created user "%s" (role=%s) with PIN "%s".', username, role, pin);
 }
+
+/**
+ * Phase 3 migration: adds the accountStatus column to Users, used to mark
+ * merchandiser records that a Supervisor/RSM pre-registered (name + area
+ * only) but that an admin hasn't activated with a username/PIN yet. Blank
+ * or missing accountStatus is treated as 'active' everywhere in the code,
+ * so existing rows don't need to be backfilled. Doesn't touch existing
+ * data. Run once in the browser editor.
+ */
+function migratePhase3Schema() {
+  addColumnIfMissing_(getSheet_(SHEET_NAMES.USERS), 'accountStatus');
+  Logger.log('Phase 3 schema migrated: accountStatus column added to Users.');
+}
+
+/**
+ * Activates a merchandiser record that was pre-registered via the web UI
+ * (createPendingMerchandiser action): sets username/PIN and flips
+ * accountStatus to 'active'. Edit the CHANGE_ME values above in the
+ * browser editor (never commit real values here) before running.
+ */
+function activatePendingMerchandiser() {
+  const userId = 'CHANGE_ME'; // copy from the "Menunggu Aktivasi" list in the app
+  const username = 'CHANGE_ME';
+  const pin = 'CHANGE_ME';
+
+  if (userId === 'CHANGE_ME' || username === 'CHANGE_ME' || pin === 'CHANGE_ME') {
+    throw new Error('Edit userId/username/pin above (in the browser editor, not a local file) before running.');
+  }
+
+  const sheet = getSheet_(SHEET_NAMES.USERS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idx = {};
+  headers.forEach((h, i) => (idx[h] = i));
+
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][idx.userId] === userId) {
+      sheet.getRange(r + 1, idx.username + 1).setValue(username);
+      sheet.getRange(r + 1, idx.pinHash + 1).setValue(hashPin_(pin));
+      sheet.getRange(r + 1, idx.accountStatus + 1).setValue('active');
+      Logger.log('Activated merchandiser "%s" as username "%s".', data[r][idx.name], username);
+      return;
+    }
+  }
+  throw new Error('No user found with userId: ' + userId);
+}
