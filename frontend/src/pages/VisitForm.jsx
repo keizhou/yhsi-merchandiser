@@ -18,7 +18,15 @@ function newSlot(label) {
   return { id: slotIdCounter, label: label || 'Rak', photo: null, preview: null, compressing: false };
 }
 
+const PREP_TASKS = [
+  'Ngecek Display',
+  'Mengisi Display Kosong di rak regular dan secondary display',
+  'Mengecek stock dan ED',
+];
+
 export default function VisitForm({ visit, onDone }) {
+  const [prepDone, setPrepDone] = useState(false);
+  const [prepChecks, setPrepChecks] = useState(() => PREP_TASKS.map(() => false));
   const [products, setProducts] = useState(null);
   const [error, setError] = useState('');
   const [availability, setAvailability] = useState({}); // sku -> bool
@@ -132,6 +140,41 @@ export default function VisitForm({ visit, onDone }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (!prepDone) {
+    const allChecked = prepChecks.every(Boolean);
+    return (
+      <div>
+        <h2 style={{ fontSize: 16 }}>{visit.store ? visit.store.name : visit.storeId}</h2>
+        <p style={{ fontWeight: 'bold', marginTop: 16 }}>Lakukan tugas regularmu:</p>
+        <ol style={{ paddingLeft: 20 }}>
+          {PREP_TASKS.map((task, i) => (
+            <li key={i} style={{ marginBottom: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={prepChecks[i]}
+                  onChange={(e) =>
+                    setPrepChecks((prev) => prev.map((v, idx) => (idx === i ? e.target.checked : v)))
+                  }
+                  style={{ marginTop: 3 }}
+                />
+                {task}
+              </label>
+            </li>
+          ))}
+        </ol>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Setelah semua selesai silahkan klik untuk memulai asesmen.</p>
+        <button
+          onClick={() => setPrepDone(true)}
+          disabled={!allChecked}
+          style={{ width: '100%', padding: 12, fontWeight: 'bold' }}
+        >
+          Mulai Asesmen
+        </button>
+      </div>
+    );
   }
 
   if (submitted) {
