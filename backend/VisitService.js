@@ -73,6 +73,50 @@ function getJourneyPlan_(auth, body) {
   return { ok: true, journeyPlan: plan };
 }
 
+/**
+ * action: "getMyVisits" — { token } -> this merchandiser's own submitted
+ * visits, newest first, each joined with store name and the approval
+ * chain's current stage (none/supervisor/rsm/headoffice + status), so a
+ * merchandiser can see what they've already submitted and where it stands.
+ */
+function getMyVisits_(auth) {
+  const visitsSheet = getSheet_(SHEET_NAMES.VISITS);
+  const visits = sheetToObjects_(visitsSheet).filter((v) => v.merchandiserId === auth.userId);
+
+  const storesSheet = getSheet_(SHEET_NAMES.STORES);
+  const storeById = {};
+  sheetToObjects_(storesSheet).forEach((s) => (storeById[s.storeId] = s));
+
+  const verificationsSheet = getSheet_(SHEET_NAMES.VISIT_VERIFICATIONS);
+  const verificationByVisitId = {};
+  sheetToObjects_(verificationsSheet).forEach((v) => (verificationByVisitId[v.visitId] = v));
+
+  const result = visits
+    .sort((a, b) => (a.checkInTime > b.checkInTime ? -1 : 1))
+    .map((v) => {
+      const verification = verificationByVisitId[v.visitId];
+      let stage = 'Menunggu Verifikasi Supervisor';
+      if (verification) {
+        if (verification.headOfficeStatus === 'approved') stage = 'Disetujui Final (Head Office)';
+        else if (verification.headOfficeStatus === 'sent_back') stage = 'Dikirim Balik oleh Head Office';
+        else if (verification.rsmStatus === 'approved') stage = 'Menunggu Persetujuan Head Office';
+        else if (verification.rsmStatus === 'sent_back') stage = 'Dikirim Balik oleh RSM';
+        else if (verification.status === 'approved') stage = 'Menunggu Review RSM';
+        else if (verification.status === 'revision_requested') stage = 'Perlu Revisi (Supervisor)';
+        else stage = 'Sudah Diverifikasi Supervisor';
+      }
+      return {
+        visitId: v.visitId,
+        storeId: v.storeId,
+        storeName: storeById[v.storeId] ? storeById[v.storeId].name : v.storeId,
+        checkInTime: v.checkInTime,
+        stage: stage,
+      };
+    });
+
+  return { ok: true, visits: result };
+}
+
 function findVisitRow_(sheet, visitId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];

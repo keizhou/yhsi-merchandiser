@@ -24,6 +24,9 @@ const PREP_TASKS = [
   'Mengecek stock dan ED',
 ];
 
+const ED_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const ED_YEARS = ['2026', '2027', '2028', '2029'];
+
 export default function VisitForm({ visit, onDone }) {
   const [prepDone, setPrepDone] = useState(false);
   const [prepChecks, setPrepChecks] = useState(() => PREP_TASKS.map(() => false));
@@ -53,7 +56,7 @@ export default function VisitForm({ visit, onDone }) {
         // Nothing pre-checked — merchandiser actively marks what they actually see,
         // rather than us assuming everything's in stock by default.
         const initial = {};
-        list.forEach((p) => (initial[p.sku] = { available: false, cartonQty: '', pcsQty: '' }));
+        list.forEach((p) => (initial[p.sku] = { available: false, cartonQty: '', pcsQty: '', edMonth: '', edYear: '' }));
         setAvailability(initial);
       })
       .catch((err) => setError(err.message || 'Gagal memuat daftar produk'));
@@ -226,7 +229,7 @@ export default function VisitForm({ visit, onDone }) {
                     {p.name} {p.msl ? <span style={{ color: 'var(--warning)' }}>(MSL)</span> : null}
                   </label>
                   {entry.available && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 4, marginLeft: 24, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4, marginLeft: 24, alignItems: 'center', flexWrap: 'wrap' }}>
                       <input
                         type="number"
                         min="0"
@@ -247,6 +250,30 @@ export default function VisitForm({ visit, onDone }) {
                         onChange={(e) => setAvailabilityField(p.sku, 'pcsQty', e.target.value)}
                       />
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>pcs</span>
+                      <select
+                        value={entry.edMonth}
+                        onChange={(e) => setAvailabilityField(p.sku, 'edMonth', e.target.value)}
+                        style={{ padding: 4 }}
+                      >
+                        <option value="">Bulan ED</option>
+                        {ED_MONTHS.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={entry.edYear}
+                        onChange={(e) => setAvailabilityField(p.sku, 'edYear', e.target.value)}
+                        style={{ padding: 4 }}
+                      >
+                        <option value="">Tahun ED</option>
+                        {ED_YEARS.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>
@@ -257,7 +284,7 @@ export default function VisitForm({ visit, onDone }) {
       </section>
 
       <section style={{ marginTop: 24 }}>
-        <h3 style={{ fontSize: 14 }}>2. Stock Take (Jumlah Facing)</h3>
+        <h3 style={{ fontSize: 14 }}>2. Jumlah Facing</h3>
         {Object.entries(grouped).map(([packtype, items]) => (
           <div key={packtype} style={{ marginTop: 8 }}>
             <div style={{ fontWeight: 'bold', fontSize: 13 }}>{packtype}</div>

@@ -5,6 +5,7 @@
  * GET  ?action=ping                                  -> connectivity test, no auth
  * GET  ?action=getProducts&token=...                 -> product catalog
  * GET  ?action=getJourneyPlan&token=...&week=...      -> this merchandiser's visits
+ * GET  ?action=getMyVisits&token=...                   -> this merchandiser's submitted visit history
  * POST { action: "login", username, pin }             -> { token, user }
  * POST { action: "submitVisit", token, ... }           -> upsert one visit
  *
@@ -64,6 +65,9 @@ function doGet(e) {
     if (action === 'getJourneyPlan') {
       const auth = requireAuth_(params.token);
       return jsonOutput_(getJourneyPlan_(auth, params));
+    }
+    if (action === 'getMyVisits') {
+      return jsonOutput_(getMyVisits_(requireAuth_(params.token)));
     }
     if (action === 'getAreas') {
       return jsonOutput_(getAreas_(requireAuth_(params.token)));

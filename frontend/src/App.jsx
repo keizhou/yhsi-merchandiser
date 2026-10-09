@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import JourneyPlan from './pages/JourneyPlan';
 import VisitForm from './pages/VisitForm';
+import MyVisits from './pages/MyVisits';
 import SyncIndicator from './components/SyncIndicator';
 import NavShell from './components/NavShell';
 import ThemeToggle from './components/ThemeToggle';
@@ -18,6 +19,16 @@ import { getSession, clearSession } from './lib/api';
 
 function MerchandiserApp({ user, onLogout }) {
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [tab, setTab] = useState('plan'); // 'plan' | 'history'
+
+  const tabStyle = (active) => ({
+    padding: '8px 12px',
+    border: 'none',
+    background: 'none',
+    borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+    fontWeight: active ? 'bold' : 'normal',
+    color: active ? 'var(--accent)' : 'var(--text)',
+  });
 
   return (
     <div style={{ maxWidth: 480, margin: '24px auto', padding: 16, fontFamily: 'system-ui, sans-serif' }}>
@@ -50,7 +61,17 @@ function MerchandiserApp({ user, onLogout }) {
           <VisitForm visit={selectedVisit} onDone={() => setSelectedVisit(null)} />
         </div>
       ) : (
-        <JourneyPlan onSelectStore={setSelectedVisit} />
+        <div>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
+            <button onClick={() => setTab('plan')} style={tabStyle(tab === 'plan')}>
+              Rencana Kunjungan
+            </button>
+            <button onClick={() => setTab('history')} style={tabStyle(tab === 'history')}>
+              Riwayat Kunjungan
+            </button>
+          </div>
+          {tab === 'plan' ? <JourneyPlan onSelectStore={setSelectedVisit} /> : <MyVisits />}
+        </div>
       )}
     </div>
   );

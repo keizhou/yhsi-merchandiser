@@ -110,6 +110,12 @@ export async function submitVisit(visitPayload) {
   return result;
 }
 
+export async function getMyVisits() {
+  const result = await apiGet('getMyVisits');
+  if (!result.ok) throw new Error(result.error || 'failed to load visit history');
+  return result.visits;
+}
+
 // Management-screen endpoints (Dashboard/Merchandisers/Stores). No offline
 // caching here, unlike the field-facing calls above, these screens assume
 // the supervisor/manager/etc. has signal.
