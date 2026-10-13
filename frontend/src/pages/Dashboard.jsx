@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
-import { getDashboardSummary, getStores } from '../lib/api';
+import { getDashboardSummary, getStores, exportMonth } from '../lib/api';
+import { downloadCsv } from '../lib/csv';
 
 function defaultMonth() {
   return new Date().toISOString().slice(0, 7); // "2026-09"
@@ -71,6 +72,7 @@ export default function Dashboard() {
   const [storeId, setStoreId] = useState('');
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     getStores()
@@ -84,6 +86,25 @@ export default function Dashboard() {
       .then(setSummary)
       .catch((err) => setError(err.message || 'Gagal memuat ringkasan'));
   }, [month, storeId]);
+
+  async function handleExport() {
+    setExporting(true);
+    setError('');
+    try {
+      const data = await exportMonth(month);
+      if (data.visitCount === 0) {
+        setError('Tidak ada kunjungan pada bulan ini.');
+        return;
+      }
+      downloadCsv(`Produk ${month}.csv`, data.produk.headers, data.produk.rows);
+      downloadCsv(`Foto dan Komentar ${month}.csv`, data.foto.headers, data.foto.rows);
+      downloadCsv(`Harga Kompetitor ${month}.csv`, data.kompetitor.headers, data.kompetitor.rows);
+    } catch (err) {
+      setError(err.message || 'Gagal export');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div>
@@ -111,6 +132,9 @@ export default function Dashboard() {
             ))}
           </select>
         </label>
+        <button onClick={handleExport} disabled={exporting} style={{ padding: '7px 12px' }}>
+          {exporting ? 'Menyiapkan...' : 'Export CSV'}
+        </button>
       </div>
 
       {error && <p style={{ color: 'crimson' }}>{error}</p>}

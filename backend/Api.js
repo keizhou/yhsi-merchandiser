@@ -18,6 +18,7 @@
  * POST { action: "createStore", token, name, address, channel, areaId }
  * POST { action: "createPendingMerchandiser", token, name, areaId } (no login until admin activates it)
  * POST { action: "assignMerchandiserStores", token, userId, storeIds }
+ * GET  ?action=exportMonth&token=...&month=2026-10          -> flat tables for CSV export
  * GET  ?action=getJourneyPlanForWeek&token=...&merchandiserId=...&week=...
  * POST { action: "setJourneyPlanForWeek", token, merchandiserId, week, entries: [{storeId, plannedDate}, ...] }
  * GET  ?action=getDashboardSummary&token=...&startDate=...&endDate=...&storeId=...
@@ -96,6 +97,9 @@ function doGet(e) {
     }
     if (action === 'getVisitsForHeadOfficeReview') {
       return jsonOutput_(getVisitsForHeadOfficeReview_(requireAuth_(params.token), params));
+    }
+    if (action === 'exportMonth') {
+      return jsonOutput_(exportMonth_(requireAuth_(params.token), params));
     }
     if (action === 'getJourneyPlanForWeek') {
       return jsonOutput_(getJourneyPlanForWeek_(requireAuth_(params.token), params));

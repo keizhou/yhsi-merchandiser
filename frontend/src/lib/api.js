@@ -243,3 +243,9 @@ export async function setJourneyPlanForWeek(merchandiserId, week, entries) {
   if (!result.ok) throw new Error(result.error || 'failed to save journey plan');
   return result;
 }
+
+export async function exportMonth(month) {
+  const result = await apiGet('exportMonth', { month });
+  if (!result.ok) throw new Error(result.error || 'failed to export');
+  return result;
+}
