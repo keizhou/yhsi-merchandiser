@@ -34,7 +34,7 @@ function formatPrice(digits) {
   return digits ? Number(digits).toLocaleString('id-ID') : '';
 }
 
-const STEP_TITLES = ['Asesmen Toko', 'Secondary Display', 'Competitor Monitoring'];
+const STEP_TITLES = ['Ketersediaan Produk', 'Facing dan Foto Rak', 'Secondary Display', 'Competitor Monitoring'];
 
 function CommentBox({ value, onChange }) {
   return (
@@ -79,7 +79,7 @@ export default function VisitForm({ visit, onDone }) {
   const [secondaryPreviews, setSecondaryPreviews] = useState([]); // index -> object URL
   const [secondaryCompressing, setSecondaryCompressing] = useState([]); // index -> bool
 
-  // Assessment is 3 pages: [1 Ketersediaan + 2 Facing + 3 Foto Rak], [4 Secondary Display], [5 Competitor].
+  // Assessment is 4 pages: [1 Ketersediaan], [2 Facing + 3 Foto Rak], [4 Secondary Display], [5 Competitor].
   const [step, setStep] = useState(0);
   const [comments, setComments] = useState({ availability: '', shelf: '', secondary: '' });
   const [competitors, setCompetitors] = useState(() => [newCompetitor()]);
@@ -281,7 +281,7 @@ export default function VisitForm({ visit, onDone }) {
         Halaman {step + 1} dari {STEP_TITLES.length}: {STEP_TITLES[step]}
       </p>
 
-      {step === 0 && (<>
+      {step === 0 && (
       <section style={{ marginTop: 16 }}>
         <h3 style={{ fontSize: 14 }}>1. Ketersediaan Produk</h3>
         <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -357,8 +357,10 @@ export default function VisitForm({ visit, onDone }) {
         ))}
         <CommentBox value={comments.availability} onChange={(v) => setComments((c) => ({ ...c, availability: v }))} />
       </section>
+      )}
 
-      <section style={{ marginTop: 24 }}>
+      {step === 1 && (<>
+      <section style={{ marginTop: 16 }}>
         <h3 style={{ fontSize: 14 }}>2. Jumlah Facing</h3>
         {Object.entries(grouped).map(([packtype, items]) => (
           <div key={packtype} style={{ marginTop: 8 }}>
@@ -418,8 +420,8 @@ export default function VisitForm({ visit, onDone }) {
       </section>
       </>)}
 
-      {step === 1 && (
-      <section style={{ marginTop: 24 }}>
+      {step === 2 && (
+      <section style={{ marginTop: 16 }}>
         <h3 style={{ fontSize: 14 }}>4. Secondary Display</h3>
         <label style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
           Berapa banyak secondary display di toko ini?
@@ -449,8 +451,8 @@ export default function VisitForm({ visit, onDone }) {
       </section>
       )}
 
-      {step === 2 && (
-      <section style={{ marginTop: 24 }}>
+      {step === 3 && (
+      <section style={{ marginTop: 16 }}>
         <h3 style={{ fontSize: 14 }}>5. Competitor Monitoring</h3>
 
         <div style={{ fontSize: 13, fontWeight: 'bold', marginTop: 8 }}>5.1 Kompetitor dan Harga</div>
