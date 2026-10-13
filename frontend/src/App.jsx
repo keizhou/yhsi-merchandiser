@@ -16,6 +16,7 @@ import Verification from './pages/Verification';
 import RsmReview from './pages/RsmReview';
 import HeadOfficeReview from './pages/HeadOfficeReview';
 import { getSession, clearSession } from './lib/api';
+import { forceUpdate } from './lib/pwa';
 
 function MerchandiserApp({ user, onLogout }) {
   const [selectedVisit, setSelectedVisit] = useState(null);
@@ -39,6 +40,9 @@ function MerchandiserApp({ user, onLogout }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <ThemeToggle />
+          <button onClick={forceUpdate} style={{ padding: '6px 12px' }} title="Muat ulang versi terbaru">
+            Perbarui
+          </button>
           <button
             onClick={() => {
               clearSession();
