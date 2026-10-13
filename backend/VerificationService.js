@@ -49,6 +49,9 @@ function getVisitsForVerification_(auth, params) {
   const verificationByVisitId = {};
   verifications.forEach((v) => (verificationByVisitId[v.visitId] = v));
 
+  const userNameById = {};
+  sheetToObjects_(getSheet_(SHEET_NAMES.USERS)).forEach((u) => (userNameById[u.userId] = u.name));
+
   const result = visits
     .sort((a, b) => (a.checkInTime > b.checkInTime ? -1 : 1))
     .map((v) => {
@@ -103,6 +106,9 @@ function getVisitsForVerification_(auth, params) {
         storeId: v.storeId,
         storeName: storeById[v.storeId] ? storeById[v.storeId].name : v.storeId,
         checkInTime: v.checkInTime,
+        status: v.status,
+        skipReason: v.skipReason || '',
+        merchandiserName: userNameById[v.merchandiserId] || '',
         availability: availability,
         availabilityDetail: availabilityDetail,
         facing: facing,
@@ -174,7 +180,7 @@ function getVisitsForRsmReview_(auth, params) {
   stores.forEach((s) => (storeById[s.storeId] = s));
 
   const visitsSheet = getSheet_(SHEET_NAMES.VISITS);
-  let visits = sheetToObjects_(visitsSheet);
+  let visits = sheetToObjects_(visitsSheet).filter((v) => v.status !== 'not_visited');
   visits = filterByScopedAreas_(visits, auth, storeById);
 
   if (params.storeId) visits = visits.filter((v) => v.storeId === params.storeId);
@@ -311,7 +317,7 @@ function getVisitsForHeadOfficeReview_(auth, params) {
   stores.forEach((s) => (storeById[s.storeId] = s));
 
   const visitsSheet = getSheet_(SHEET_NAMES.VISITS);
-  let visits = sheetToObjects_(visitsSheet);
+  let visits = sheetToObjects_(visitsSheet).filter((v) => v.status !== 'not_visited');
   visits = filterByScopedAreas_(visits, auth, storeById);
 
   if (params.storeId) visits = visits.filter((v) => v.storeId === params.storeId);

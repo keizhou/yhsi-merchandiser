@@ -233,6 +233,24 @@ function VisitReviewCard({ visit, onSaved }) {
   );
 }
 
+function SkippedVisitCard({ visit }) {
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{new Date(visit.checkInTime).toLocaleString('id-ID')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            {visit.storeName}
+            {visit.merchandiserName ? ` · ${visit.merchandiserName}` : ''}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--danger)' }}>Tidak dikunjungi</div>
+      </div>
+      <div style={{ fontSize: 13, marginTop: 8 }}>Alasan: {visit.skipReason || '-'}</div>
+    </div>
+  );
+}
+
 export default function Verification() {
   const [stores, setStores] = useState([]);
   const [storeId, setStoreId] = useState('');
@@ -334,7 +352,13 @@ export default function Verification() {
       ) : visits.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>Tidak ada kunjungan di periode/toko ini.</p>
       ) : (
-        visits.map((v) => <VisitReviewCard key={v.visitId} visit={v} onSaved={reload} />)
+        visits.map((v) =>
+          v.status === 'not_visited' ? (
+            <SkippedVisitCard key={v.visitId} visit={v} />
+          ) : (
+            <VisitReviewCard key={v.visitId} visit={v} onSaved={reload} />
+          )
+        )
       )}
     </div>
   );

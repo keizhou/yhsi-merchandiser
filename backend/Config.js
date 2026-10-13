@@ -34,6 +34,7 @@ const SHEET_HEADERS = {
     'shelfPhotosJson',
     'secondaryDisplayCount',
     'secondaryDisplayPhotosJson',
+    'skipReason', // free-text reason when status is 'not_visited'
   ],
   Areas: ['areaId', 'name', 'regionId'],
   StoreProducts: ['storeId', 'sku', 'listed', 'msl', 'expectedFacing'],

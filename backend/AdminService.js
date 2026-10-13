@@ -427,7 +427,7 @@ function getDashboardSummary_(auth, params) {
   products.forEach((p) => (productBySku[p.sku] = p));
 
   const visitsSheet = getSheet_(SHEET_NAMES.VISITS);
-  let visits = sheetToObjects_(visitsSheet);
+  let visits = sheetToObjects_(visitsSheet).filter((v) => v.status !== 'not_visited');
 
   visits = filterByScopedAreas_(visits, auth, storeById);
   if (params.storeId) {

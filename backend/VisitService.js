@@ -13,6 +13,10 @@ function sheetToObjects_(sheet) {
     if (data[r].every((v) => v === '')) continue;
     const obj = {};
     headers.forEach((h, i) => (obj[h] = data[r][i]));
+    // Sheets turns "2026-10-27" into a real date; hand the app the plain day back.
+    if (obj.plannedDate instanceof Date) {
+      obj.plannedDate = Utilities.formatDate(obj.plannedDate, getSpreadsheet().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+    }
     rows.push(obj);
   }
   return rows;
@@ -96,7 +100,9 @@ function getMyVisits_(auth) {
     .map((v) => {
       const verification = verificationByVisitId[v.visitId];
       let stage = 'Menunggu Verifikasi Supervisor';
-      if (verification) {
+      if (v.status === 'not_visited') {
+        stage = 'Tidak dikunjungi: ' + (v.skipReason || '-');
+      } else if (verification) {
         if (verification.headOfficeStatus === 'approved') stage = 'Disetujui Final (Head Office)';
         else if (verification.headOfficeStatus === 'sent_back') stage = 'Dikirim Balik oleh Head Office';
         else if (verification.rsmStatus === 'approved') stage = 'Menunggu Persetujuan Head Office';
@@ -110,6 +116,7 @@ function getMyVisits_(auth) {
         storeId: v.storeId,
         storeName: storeById[v.storeId] ? storeById[v.storeId].name : v.storeId,
         checkInTime: v.checkInTime,
+        status: v.status,
         stage: stage,
       };
     });
@@ -152,6 +159,12 @@ function submitVisit_(auth, body) {
 
   function existingValue(field) {
     return existing ? sheet.getRange(existing.rowNumber, existing.headers.indexOf(field) + 1).getValue() : '';
+  }
+
+  const notVisited = body.status === 'not_visited';
+  if (notVisited) {
+    if (!String(body.skipReason || '').trim()) return { ok: false, error: 'skipReason is required' };
+    addColumnIfMissing_(sheet, 'skipReason');
   }
 
   const checkInTime = body.checkInTime || new Date().toISOString();
@@ -206,6 +219,7 @@ function submitVisit_(auth, body) {
     shelfPhotosJson: JSON.stringify(shelfPhotos),
     secondaryDisplayCount: body.secondaryDisplayCount || 0,
     secondaryDisplayPhotosJson: JSON.stringify(secondaryDisplayPhotos),
+    skipReason: notVisited ? String(body.skipReason).trim() : '',
   };
 
   if (existing) {
