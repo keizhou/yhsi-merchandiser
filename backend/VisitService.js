@@ -147,6 +147,9 @@ function findVisitRow_(sheet, visitId) {
  *   shelfPhotos: [{ packtype, photo: {base64, mimeType} }, ...],
  *   secondaryDisplayCount: number,
  *   secondaryDisplayPhotos: [{base64, mimeType}, ...],
+ *   comments: { availability, shelf, secondary },
+ *   competitorPrices: [{name, price}, ...],
+ *   competitorActivities: [{photo: {base64, mimeType}, comment}, ...],
  * }
  */
 function submitVisit_(auth, body) {
@@ -161,6 +164,9 @@ function submitVisit_(auth, body) {
     return existing ? sheet.getRange(existing.rowNumber, existing.headers.indexOf(field) + 1).getValue() : '';
   }
 
+  ['commentAvailability', 'commentShelf', 'commentSecondary', 'competitorPricesJson', 'competitorActivitiesJson'].forEach((c) =>
+    addColumnIfMissing_(sheet, c)
+  );
   const notVisited = body.status === 'not_visited';
   if (notVisited) {
     if (!String(body.skipReason || '').trim()) return { ok: false, error: 'skipReason is required' };
@@ -204,6 +210,28 @@ function submitVisit_(auth, body) {
     );
   }
 
+  // Competitor activity: photo + comment per entry. Like the other photos,
+  // an offline retry that sends no base64 keeps the URL already saved.
+  let oldActivities = [];
+  try {
+    oldActivities = JSON.parse(existingValue('competitorActivitiesJson') || '[]');
+  } catch (e) {
+    oldActivities = [];
+  }
+  const competitorActivities = Array.isArray(body.competitorActivities)
+    ? body.competitorActivities.map((a, i) => ({
+        photoUrl:
+          a.photo && a.photo.base64
+            ? savePhoto_(body.storeId, visitDateStr, body.visitId, 'competitor-' + (i + 1), a.photo.base64, a.photo.mimeType)
+            : (oldActivities[i] && oldActivities[i].photoUrl) || '',
+        comment: String(a.comment || '').trim(),
+      }))
+    : oldActivities;
+  const competitorPrices = (Array.isArray(body.competitorPrices) ? body.competitorPrices : [])
+    .map((c) => ({ name: String(c.name || '').trim(), price: Number(c.price) || 0 }))
+    .filter((c) => c.name || c.price);
+  const comments = body.comments || {};
+
   const rowValues = {
     visitId: body.visitId,
     merchandiserId: auth.userId,
@@ -220,6 +248,11 @@ function submitVisit_(auth, body) {
     secondaryDisplayCount: body.secondaryDisplayCount || 0,
     secondaryDisplayPhotosJson: JSON.stringify(secondaryDisplayPhotos),
     skipReason: notVisited ? String(body.skipReason).trim() : '',
+    commentAvailability: String(comments.availability || '').trim(),
+    commentShelf: String(comments.shelf || '').trim(),
+    commentSecondary: String(comments.secondary || '').trim(),
+    competitorPricesJson: JSON.stringify(competitorPrices),
+    competitorActivitiesJson: JSON.stringify(competitorActivities),
   };
 
   if (existing) {

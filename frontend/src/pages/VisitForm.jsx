@@ -18,6 +18,39 @@ function newSlot(label) {
   return { id: slotIdCounter, label: label || 'Rak', photo: null, preview: null, compressing: false };
 }
 
+let activityIdCounter = 0;
+function newActivity() {
+  activityIdCounter += 1;
+  return { id: activityIdCounter, comment: '', photo: null, preview: null, compressing: false };
+}
+
+let competitorIdCounter = 0;
+function newCompetitor() {
+  competitorIdCounter += 1;
+  return { id: competitorIdCounter, name: '', price: '' }; // price: digits only, shown with thousand dots
+}
+
+function formatPrice(digits) {
+  return digits ? Number(digits).toLocaleString('id-ID') : '';
+}
+
+const STEP_TITLES = ['Asesmen Toko', 'Secondary Display', 'Competitor Monitoring'];
+
+function CommentBox({ value, onChange }) {
+  return (
+    <label style={{ display: 'block', fontSize: 13, marginTop: 12 }}>
+      Komentar (opsional)
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        placeholder="Tulis catatan untuk supervisor"
+        style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: 8, marginTop: 4, fontFamily: 'inherit', fontSize: 13 }}
+      />
+    </label>
+  );
+}
+
 const PREP_TASKS = [
   'Ngecek Display',
   'Mengisi Display Kosong di rak regular dan secondary display',
@@ -45,6 +78,12 @@ export default function VisitForm({ visit, onDone }) {
   const [secondaryPhotos, setSecondaryPhotos] = useState([]); // index -> {base64, mimeType}
   const [secondaryPreviews, setSecondaryPreviews] = useState([]); // index -> object URL
   const [secondaryCompressing, setSecondaryCompressing] = useState([]); // index -> bool
+
+  // Assessment is 3 pages: [1 Ketersediaan + 2 Facing + 3 Foto Rak], [4 Secondary Display], [5 Competitor].
+  const [step, setStep] = useState(0);
+  const [comments, setComments] = useState({ availability: '', shelf: '', secondary: '' });
+  const [competitors, setCompetitors] = useState(() => [newCompetitor()]);
+  const [activities, setActivities] = useState(() => [newActivity()]);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -116,7 +155,31 @@ export default function VisitForm({ visit, onDone }) {
     }
   }
 
-  const anyCompressing = (shelfSlots || []).some((s) => s.compressing) || secondaryCompressing.some(Boolean);
+  function updateCompetitor(id, patch) {
+    setCompetitors((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }
+
+  function updateActivity(id, patch) {
+    setActivities((list) => list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  }
+
+  async function handleActivityPhotoChange(e, id) {
+    const file = e.target.files[0];
+    if (!file) return;
+    updateActivity(id, { compressing: true });
+    try {
+      const result = await compressPhoto(file);
+      updateActivity(id, { photo: result, preview: URL.createObjectURL(file), compressing: false });
+    } catch (err) {
+      setError('Gagal memproses foto: ' + err.message);
+      updateActivity(id, { compressing: false });
+    }
+  }
+
+  const anyCompressing =
+    (shelfSlots || []).some((s) => s.compressing) ||
+    secondaryCompressing.some(Boolean) ||
+    activities.some((a) => a.compressing);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -136,6 +199,13 @@ export default function VisitForm({ visit, onDone }) {
           .map((s) => ({ packtype: s.label, photo: s.photo })),
         secondaryDisplayCount: Number(secondaryCount) || 0,
         secondaryDisplayPhotos: secondaryPhotos.filter(Boolean),
+        comments,
+        competitorPrices: competitors
+          .filter((c) => c.name.trim() || c.price)
+          .map((c) => ({ name: c.name.trim(), price: Number(c.price) || 0 })),
+        competitorActivities: activities
+          .filter((a) => a.photo || a.comment.trim())
+          .map((a) => ({ photo: a.photo, comment: a.comment.trim() })),
       });
       setSubmitted(true);
     } catch (err) {
@@ -207,7 +277,11 @@ export default function VisitForm({ visit, onDone }) {
   return (
     <div>
       <h2 style={{ fontSize: 16 }}>{visit.store ? visit.store.name : visit.storeId}</h2>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+        Halaman {step + 1} dari {STEP_TITLES.length}: {STEP_TITLES[step]}
+      </p>
 
+      {step === 0 && (<>
       <section style={{ marginTop: 16 }}>
         <h3 style={{ fontSize: 14 }}>1. Ketersediaan Produk</h3>
         <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -281,6 +355,7 @@ export default function VisitForm({ visit, onDone }) {
             })}
           </div>
         ))}
+        <CommentBox value={comments.availability} onChange={(v) => setComments((c) => ({ ...c, availability: v }))} />
       </section>
 
       <section style={{ marginTop: 24 }}>
@@ -339,8 +414,11 @@ export default function VisitForm({ visit, onDone }) {
         <button type="button" onClick={addShelfSlot} style={{ marginTop: 8, padding: '6px 12px' }}>
           + Tambah Foto Rak
         </button>
+        <CommentBox value={comments.shelf} onChange={(v) => setComments((c) => ({ ...c, shelf: v }))} />
       </section>
+      </>)}
 
+      {step === 1 && (
       <section style={{ marginTop: 24 }}>
         <h3 style={{ fontSize: 14 }}>4. Secondary Display</h3>
         <label style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
@@ -367,15 +445,101 @@ export default function VisitForm({ visit, onDone }) {
             )}
           </div>
         ))}
+        <CommentBox value={comments.secondary} onChange={(v) => setComments((c) => ({ ...c, secondary: v }))} />
       </section>
+      )}
 
-      <button
-        onClick={handleSubmit}
-        disabled={submitting || anyCompressing}
-        style={{ width: '100%', padding: 12, marginTop: 24, fontWeight: 'bold' }}
-      >
-        {submitting ? 'Menyimpan...' : 'Selesai & Simpan Kunjungan'}
-      </button>
+      {step === 2 && (
+      <section style={{ marginTop: 24 }}>
+        <h3 style={{ fontSize: 14 }}>5. Competitor Monitoring</h3>
+
+        <div style={{ fontSize: 13, fontWeight: 'bold', marginTop: 8 }}>5.1 Kompetitor dan Harga</div>
+        {competitors.map((c) => (
+          <div key={c.id} style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Nama kompetitor"
+              value={c.name}
+              onChange={(e) => updateCompetitor(c.id, { name: e.target.value })}
+              style={{ flex: 1, minWidth: 0, padding: 6 }}
+            />
+            <span style={{ fontSize: 13 }}>Rp</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Harga"
+              value={formatPrice(c.price)}
+              onChange={(e) => updateCompetitor(c.id, { price: e.target.value.replace(/\D/g, '') })}
+              style={{ width: 100, padding: 6, textAlign: 'right' }}
+            />
+            {competitors.length > 1 && (
+              <button type="button" onClick={() => setCompetitors((l) => l.filter((x) => x.id !== c.id))} style={{ padding: '4px 8px' }}>
+                Hapus
+              </button>
+            )}
+          </div>
+        ))}
+        <button type="button" onClick={() => setCompetitors((l) => [...l, newCompetitor()])} style={{ marginTop: 8, padding: '6px 12px' }}>
+          + Tambah Kompetitor
+        </button>
+
+        <div style={{ fontSize: 13, fontWeight: 'bold', marginTop: 20 }}>5.2 Aktivitas Kompetitor</div>
+        {activities.map((a, i) => (
+          <div key={a.id} style={{ marginTop: 12, paddingBottom: 12, borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13 }}>Aktivitas #{i + 1}</span>
+              {activities.length > 1 && (
+                <button type="button" onClick={() => setActivities((l) => l.filter((x) => x.id !== a.id))} style={{ padding: '4px 8px' }}>
+                  Hapus
+                </button>
+              )}
+            </div>
+            <input type="file" accept="image/*" capture="environment" onChange={(e) => handleActivityPhotoChange(e, a.id)} style={{ marginTop: 6 }} />
+            {a.compressing && <p style={{ fontSize: 12 }}>Memproses foto...</p>}
+            {a.preview && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <img src={a.preview} alt={'Aktivitas ' + (i + 1)} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />
+                <span style={{ fontSize: 12, color: 'var(--accent)' }}>Foto tersimpan</span>
+              </div>
+            )}
+            <textarea
+              value={a.comment}
+              onChange={(e) => updateActivity(a.id, { comment: e.target.value })}
+              rows={2}
+              placeholder="Komentar tentang aktivitas kompetitor"
+              style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: 8, marginTop: 8, fontFamily: 'inherit', fontSize: 13 }}
+            />
+          </div>
+        ))}
+        <button type="button" onClick={() => setActivities((l) => [...l, newActivity()])} style={{ marginTop: 8, padding: '6px 12px' }}>
+          + Tambah Aktivitas
+        </button>
+      </section>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+        {step > 0 && (
+          <button onClick={() => setStep((n) => n - 1)} disabled={submitting} style={{ flex: 1, padding: 12 }}>
+            &larr; Kembali
+          </button>
+        )}
+        {step < STEP_TITLES.length - 1 ? (
+          <button
+            onClick={() => {
+              setStep((n) => n + 1);
+              window.scrollTo(0, 0);
+            }}
+            disabled={anyCompressing}
+            style={{ flex: 2, padding: 12, fontWeight: 'bold' }}
+          >
+            Lanjut &rarr;
+          </button>
+        ) : (
+          <button onClick={handleSubmit} disabled={submitting || anyCompressing} style={{ flex: 2, padding: 12, fontWeight: 'bold' }}>
+            {submitting ? 'Menyimpan...' : 'Selesai & Simpan Kunjungan'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

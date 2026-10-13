@@ -35,6 +35,11 @@ const SHEET_HEADERS = {
     'secondaryDisplayCount',
     'secondaryDisplayPhotosJson',
     'skipReason', // free-text reason when status is 'not_visited'
+    'commentAvailability', // merchandiser's free-text comment per assessment page, shown in Verifikasi
+    'commentShelf', // covers facing + shelf photos (sections 2 and 3)
+    'commentSecondary',
+    'competitorPricesJson', // [{name, price}]
+    'competitorActivitiesJson', // [{photoUrl, comment}]
   ],
   Areas: ['areaId', 'name', 'regionId'],
   StoreProducts: ['storeId', 'sku', 'listed', 'msl', 'expectedFacing'],

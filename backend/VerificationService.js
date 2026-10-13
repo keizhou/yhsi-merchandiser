@@ -80,6 +80,19 @@ function getVisitsForVerification_(auth, params) {
         /* leave empty */
       }
 
+      let competitorPrices = [];
+      let competitorActivities = [];
+      try {
+        competitorPrices = JSON.parse(v.competitorPricesJson || '[]');
+      } catch (e) {
+        /* leave empty */
+      }
+      try {
+        competitorActivities = JSON.parse(v.competitorActivitiesJson || '[]');
+      } catch (e) {
+        /* leave empty */
+      }
+
       const facing = Object.keys(stockTake).map((sku) => ({
         sku: sku,
         name: productBySku[sku] ? productBySku[sku].name : sku,
@@ -108,6 +121,11 @@ function getVisitsForVerification_(auth, params) {
         checkInTime: v.checkInTime,
         status: v.status,
         skipReason: v.skipReason || '',
+        commentAvailability: v.commentAvailability || '',
+        commentShelf: v.commentShelf || '',
+        commentSecondary: v.commentSecondary || '',
+        competitorPrices: competitorPrices,
+        competitorActivities: competitorActivities,
         merchandiserName: userNameById[v.merchandiserId] || '',
         availability: availability,
         availabilityDetail: availabilityDetail,

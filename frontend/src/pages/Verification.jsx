@@ -45,6 +45,16 @@ function YesNoToggle({ label, value, onChange }) {
   );
 }
 
+function MerchComment({ text }) {
+  if (!text) return null;
+  return (
+    <div style={{ fontSize: 12, marginTop: 6, padding: 8, borderRadius: 6, background: 'var(--border-subtle)' }}>
+      <span style={{ color: 'var(--text-muted)' }}>Komentar merchandiser: </span>
+      {text}
+    </div>
+  );
+}
+
 function VisitReviewCard({ visit, onSaved }) {
   const existing = visit.verification;
   const [expanded, setExpanded] = useState(false);
@@ -162,6 +172,7 @@ function VisitReviewCard({ visit, onSaved }) {
                 </div>
               ))}
             </div>
+            <MerchComment text={visit.commentAvailability} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -200,6 +211,7 @@ function VisitReviewCard({ visit, onSaved }) {
                 </div>
               </div>
             ))}
+            <MerchComment text={visit.commentShelf} />
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -209,6 +221,29 @@ function VisitReviewCard({ visit, onSaved }) {
                 <PhotoLightbox key={i} src={url} alt={'Secondary ' + (i + 1)} thumbStyle={{ width: 60, height: 60, borderRadius: 6 }} />
               ))}
             </div>
+            <MerchComment text={visit.commentSecondary} />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 4 }}>5. Competitor Monitoring</div>
+            <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>5.1 Kompetitor dan Harga</div>
+            {(visit.competitorPrices || []).length === 0 && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tidak ada data harga kompetitor.</p>}
+            {(visit.competitorPrices || []).map((c, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0' }}>
+                <span>{c.name || '-'}</span>
+                <span>Rp {Number(c.price || 0).toLocaleString('id-ID')}</span>
+              </div>
+            ))}
+            <div style={{ fontSize: 12, fontWeight: 'bold', margin: '8px 0 4px' }}>5.2 Aktivitas Kompetitor</div>
+            {(visit.competitorActivities || []).length === 0 && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tidak ada aktivitas kompetitor.</p>}
+            {(visit.competitorActivities || []).map((a, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
+                {a.photoUrl ? (
+                  <PhotoLightbox src={a.photoUrl} alt={'Aktivitas kompetitor ' + (i + 1)} thumbStyle={{ width: 60, height: 60, borderRadius: 6 }} />
+                ) : null}
+                <div style={{ fontSize: 13, flex: 1 }}>{a.comment || '-'}</div>
+              </div>
+            ))}
           </div>
 
           <div style={{ marginBottom: 12 }}>
