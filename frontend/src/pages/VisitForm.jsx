@@ -57,6 +57,12 @@ const PREP_TASKS = [
   'Mengecek stock dan ED',
 ];
 
+// Products not listed yet in an area: hidden from the visit form (data stays in the Products sheet).
+// Match by area and by SKU name / pack type.
+const NOT_LISTED_BY_AREA = {
+  'AREA-JKT': (p) => p.packtype === 'PET' || /Supersprout/i.test(p.name),
+};
+
 const ED_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const ED_YEARS = ['2026', '2027', '2028', '2029'];
 
@@ -90,7 +96,9 @@ export default function VisitForm({ visit, onDone }) {
 
   useEffect(() => {
     getProducts()
-      .then((list) => {
+      .then((all) => {
+        const hide = NOT_LISTED_BY_AREA[visit.store && visit.store.areaId];
+        const list = hide ? all.filter((p) => !hide(p)) : all;
         setProducts(list);
         // Nothing pre-checked — merchandiser actively marks what they actually see,
         // rather than us assuming everything's in stock by default.
